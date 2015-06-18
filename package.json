@@ -7,5 +7,12 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Zacqary Adam Xeper",
-  "license": "MIT"
+  "license": "MIT",
+  "bin": {
+    "tevatron": "tevatron-build.js"
+  },
+  "dependencies": {
+    "uglify-js": "^2.4.20",
+    "yargs": "^3.6.0"
+  }
 }
