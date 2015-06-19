@@ -1,6 +1,6 @@
 #! /usr/bin/env node
 /*!
- * Tevatron Builder v1.0.0
+ * Tevatron Builder v0.1.0
  * by Fast Company
  *
  * Copyright 2015 Mansueto Ventures, LLC and other contributors
