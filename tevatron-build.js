@@ -1,4 +1,12 @@
 #! /usr/bin/env node
+/*!
+ * Tevatron Builder v1.0.0
+ * by Fast Company
+ *
+ * Copyright 2015 Mansueto Ventures, LLC and other contributors
+ * Released under the MIT license
+ *
+ */
 var fs = require('fs');
 var uglify = require('uglify-js');
 var argv = require('yargs')
