@@ -1,6 +1,6 @@
 {
   "name": "tevatron-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Command line interface for Tevatron's builder script",
   "main": "tevatron-build.js",
   "scripts": {
