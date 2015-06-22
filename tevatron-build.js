@@ -105,7 +105,7 @@ function scanHTMLFile(fileKey){
 		scannedFiles++;
 		var fileObj = {};
 		// Regex to find script tags and extract inline script
-		var scriptTagPattern = /(<script[^>]*?>)([^>]*)?(<\/script>)/g; 
+		var scriptTagPattern = /(<script[^>]*?>)([^]*?)(<\/script>)/g; 
 		// Regex to find external script tags
 		var scriptSrcPattern = /(<script .*?)(src ?= ?["'])([^"']*)(["'].*?)(>)/g;
 		var scriptTags = htmlData.toString().match(scriptTagPattern);
