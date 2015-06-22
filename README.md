@@ -2,6 +2,9 @@
 
 Smashes web component HTML imports into a single Javascript file
 
+## Installation
+`npm install tevatron-cli`
+
 ## Syntax
 
 `tevatron --src /your_source_directory --target /your_target_path`
