@@ -363,11 +363,21 @@ function smash(htmlFile, jsFile){
 			var styleString = null;
 			if (Array.isArray(styleTags)){
 				styleString = '';
-				for (var j in styleTags){
-					var thisStyle = styleTags[j];
+				styleTags.forEach(function(tag, index){
+					var thisStyle = tag;
 					thisStyle = thisStyle.replace(/<\/?style>/g,'');
 					styleString += thisStyle;
-				}
+				});
+			}
+			
+			// Grab <link>ed stylesheets
+			var linkTags = htmlString.match(/<link .*?rel=["'](alternate)? ?stylesheet ?(alternate)?["'].*?>/g);
+			htmlString = htmlString.replace(/<link .*?rel=["'](alternate)? ?stylesheet ?(alternate)?["'].*?>/g,'');
+			if (Array.isArray(linkTags)){
+				linkTags.forEach(function(tag){
+					var href = new RegExp('href=["\'](.*?)["\']','g').exec(tag)[1];
+					
+				});
 			}
 
 			// Replace the /**tevatron...**/ with a variable declaring htmlString and styleString
