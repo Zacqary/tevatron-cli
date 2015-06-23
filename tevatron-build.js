@@ -86,8 +86,9 @@ function scanJSFile(fileKey){
 				if (!fileCombos[fileKey]){
 					fileCombos[fileKey] = fileObj;
 					fs.readFile(htmlPath, function(err, htmlData){
-						var smashedData = smash(htmlData, jsData);
-						processSmash(smashedData, {filePath: jsPath, fileKey: fileKey, catIndex: -1});
+						smash(htmlData, jsData, htmlPath, function(smashedData){
+							processSmash(smashedData, {filePath: jsPath, fileKey: fileKey, catIndex: -1});
+						});
 					});
 				}
 			}
@@ -120,7 +121,7 @@ function scanHTMLFile(fileKey){
 					var jsPath = pathToPath(htmlPath, srcMatch[3]);
 					fileObj.js = jsPath;
 					fileCombos[fileKey] = {html: htmlPath, js: jsPath};
-					smashExternalScript(jsPath, htmlData, fileKey, i);
+					smashExternalScript(jsPath, htmlData, htmlPath, fileKey, i);
 				}
 				// If this is an inline script
 				else {
@@ -128,31 +129,42 @@ function scanHTMLFile(fileKey){
 					var jsString = innerMatch[2];
 					if (!fileCombos[inlineKey]){
 						fileObj.js = "inline";
+						fileObj.processed = 0;
+						fileObj.total = scriptTags.length;
 						fileCombos[inlineKey] = fileObj;
 					}
-					var smashedData = smash(htmlData, jsString);
-					var inlineJSString = "// === script tag " + i + " ===";
-					inlineJSString += smashedData + "\n";
-					inlineJS.push({string: inlineJSString, catIndex: i});
+					smashInlineScript(i, htmlData, htmlPath, inlineKey, inlineJS, jsString);
+					
 				}
-			}
-			if (fileCombos[inlineKey]){
-				processSmash(inlineJS, {filePath: inlineKey, fileKey: inlineKey, inline: true, inlineFileName: htmlPath});
 			}
 		}
 	});
 
-	function smashExternalScript(jsPath, htmlData, fileKey, index){
+	function smashInlineScript(i, htmlData, htmlPath, inlineKey, inlineJS, jsString){
+		smash(htmlData, jsString, htmlPath, function(smashedData){
+			var inlineJSString = "// === script tag " + i + " ===";
+			inlineJSString += smashedData + "\n";
+			inlineJS.push({string: inlineJSString, catIndex: i});
+			fileCombos[inlineKey].processed++;
+			if (fileCombos[inlineKey].processed === fileCombos[inlineKey].total && fileCombos[inlineKey]){
+				processSmash(inlineJS, {filePath: inlineKey, fileKey: inlineKey, inline: true, inlineFileName: htmlPath});
+			}
+		});
+	}
+
+	function smashExternalScript(jsPath, htmlData, htmlPath, fileKey, index){
 		fs.readFile(jsPath, function(err, jsData){
 			if (err){
 				throw err;
 			}
-			var smashedData = smash(htmlData, jsData);
-			processSmash(smashedData, {filePath: jsPath, fileKey: fileKey, catIndex: index});
+			smash(htmlData, jsData, htmlPath, function(smashedData){
+				processSmash(smashedData, {filePath: jsPath, fileKey: fileKey, catIndex: index});
+			});
 		});
 	}
 }
 
+// Makes a path relative to an HTML file into a path relative to the working directory
 function pathToPath(src, target){
 	if (src.lastIndexOf('/') > -1){
 		return src.substr(0,src.lastIndexOf('/')+1) + target;
@@ -161,7 +173,9 @@ function pathToPath(src, target){
 	}
 }
 
+// Process some smashed data and add it to the concatenation queue or write it to its own file
 function processSmash(data, args){
+	// Add to concatenation
 	if (argv.concat){
 		if (argv.verbose){
 			if (args.notemplate){
@@ -191,7 +205,7 @@ function processSmash(data, args){
 		}
 		fileCombos[args.fileKey].smashed = true;
 		tryConcat();
-	} else {
+	} else { // Write to own file
 		var fileName = args.filePath.substr(args.filePath.lastIndexOf('/'));
 		if (args.filePath.lastIndexOf('/') === -1){
 			fileName = args.filePath;
@@ -303,7 +317,7 @@ function writeFile(data, fileName, callback){
 	
 }
 
-function smash(htmlFile, jsFile){
+function smash(htmlFile, jsFile, htmlPath, callback){
 	var jsString = jsFile;
 	if (typeof jsString !== "string"){
 		jsString = jsString.toString();
@@ -345,7 +359,11 @@ function smash(htmlFile, jsFile){
 	// Remove HTML comments
 	htmlFileString = htmlFileString.replace(/<!--[^]*?-->/g, '');
 
+	var processedTemplates = 0;
 	for (i in templates){
+		processTemplate(i);
+	}
+	function processTemplate(i){
 		var pattern = new RegExp('<template id ?= ?["\']' + 
 			templates[i].substring(1) + '["\'] ?>(.*?)(?=<\/template>)','g');
 		var matches = htmlFileString.match(pattern);
@@ -372,33 +390,62 @@ function smash(htmlFile, jsFile){
 			
 			// Grab <link>ed stylesheets
 			var linkTags = htmlString.match(/<link .*?rel=["'](alternate)? ?stylesheet ?(alternate)?["'].*?>/g);
+			var linkCount = 0;
 			htmlString = htmlString.replace(/<link .*?rel=["'](alternate)? ?stylesheet ?(alternate)?["'].*?>/g,'');
+
+			// Process <link> tags
 			if (Array.isArray(linkTags)){
+				if (styleString === null){
+					styleString = '';
+				}
 				linkTags.forEach(function(tag){
-					var href = new RegExp('href=["\'](.*?)["\']','g').exec(tag)[1];
-					
+					var href = pathToPath(htmlPath, new RegExp('href=["\'](.*?)["\']','g').exec(tag)[1]);
+					fs.readFile(href, function(err, data){
+						if (err){
+							throw err;
+						}
+						// Remove whitespace in link tag and add it to the styleString
+						styleString += data.toString().replace(/\n(\s+)?/g, '');
+						linkCount++;
+						tryTemplate();
+					});
 				});
+			} else {
+				tryTemplate();
 			}
 
-			// Replace the /**tevatron...**/ with a variable declaring htmlString and styleString
-			var htmlDeclare = '';
-			if (vars[i].operator.indexOf("=") > -1){
-				htmlDeclare += "var ";
+			// Process the template if all <link> tags have been fetched and processed
+			function tryTemplate(){ //jshint ignore:line
+				if (Array.isArray(linkTags) && linkCount < linkTags.length){
+					return;
+				}
+				// Replace the /**tevatron...**/ with a variable declaring htmlString and styleString
+				var htmlDeclare = '';
+				if (vars[i].operator.indexOf("=") > -1){
+					htmlDeclare += "var ";
+				}
+				htmlDeclare += vars[i].var+vars[i].operator+"{html: '" + htmlString + "'";
+				if (styleString !== null){
+					htmlDeclare += ", css: '" + styleString + "'";
+				}
+				htmlDeclare += "}";
+				if (vars[i].operator.indexOf("=") > -1){
+					htmlDeclare += ";";
+				} else if (vars[i].operator.indexOf(":") > -1){
+					htmlDeclare += ",";
+				}
+				var jsPattern = new RegExp("\\/\\*[* ]tevatron .+? ?[=:] ?"+templates[i]+"[* ]\\*\\/", "g");
+				jsString = jsString.replace(jsPattern, htmlDeclare);
+				processedTemplates++;
+				tryDone();
 			}
-			htmlDeclare += vars[i].var+vars[i].operator+"{html: '" + htmlString + "'";
-			if (styleString !== null){
-				htmlDeclare += ", css: '" + styleString + "'";
-			}
-			htmlDeclare += "}";
-			if (vars[i].operator.indexOf("=") > -1){
-				htmlDeclare += ";";
-			} else if (vars[i].operator.indexOf(":") > -1){
-				htmlDeclare += ",";
-			}
-			var jsPattern = new RegExp("\\/\\*[* ]tevatron .+? ?[=:] ?"+templates[i]+"[* ]\\*\\/", "g");
-			jsString = jsString.replace(jsPattern, htmlDeclare);
+			
 		}
 	}
 	
-	return jsString;
+	function tryDone(){
+		if (processedTemplates === templates.length){
+			callback(jsString);
+		}
+	}
 }
