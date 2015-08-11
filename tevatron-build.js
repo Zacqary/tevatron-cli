@@ -17,6 +17,7 @@ var argv = require('yargs')
 			.alias('c', 'concat')
 			.alias('m', 'minify')
 			.alias('v', 'verbose')
+			.alias('x', 'export')
 			.argv;
 
 var jsFiles = [];
@@ -297,6 +298,13 @@ function writeFile(data, fileName, callback){
 				fs.mkdirSync(path);
 			}
 		}
+	}
+
+	if (argv.export){
+		data = "var exports = { _asArray: [], all() { return this._asArray; } };\n" +
+				"let Tevatron = prototype => { exports[prototype.name] = prototype; exports._asArray.push(prototype); };\n" +
+				data +
+				"export default exports;\n";
 	}
 
 	if (argv.minify){
