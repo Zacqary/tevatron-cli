@@ -432,9 +432,9 @@ function smash(htmlFile, jsFile, htmlPath, callback){
 				if (vars[i].operator.indexOf("=") > -1){
 					htmlDeclare += "var ";
 				}
-				htmlDeclare += vars[i].var+vars[i].operator+"{html: '" + htmlString + "'";
+				htmlDeclare += vars[i].var+vars[i].operator+"{html: '" + htmlString.replace(/'/g,"\\'") + "'";
 				if (styleString !== null){
-					htmlDeclare += ", css: '" + styleString + "'";
+					htmlDeclare += ", css: '" + styleString.replace(/'/g,"\\'") + "'";
 				}
 				htmlDeclare += "}";
 				if (vars[i].operator.indexOf("=") > -1){
