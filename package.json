@@ -6,15 +6,9 @@
   "scripts": {
     "release": "node bump"
   },
-  "author": "Fast Company <dev@fastcompany.com>",
-  "contributors": [
-    {
-      "name": "Zacqary Adam Xeper",
-      "email": "zxeper@fastcompany.com"
-    }
-  ],
+  "author": "Zacqary Adam Xeper <plankhead@gmail.com>",
   "license": "MIT",
-  "repository": "https://github.com/fastcompany/tevatron-cli.git",
+  "repository": "https://github.com/zacqary/tevatron-cli.git",
   "bin": {
     "tevatron": "tevatron-build.js"
   },
